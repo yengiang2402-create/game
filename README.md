@@ -1,36 +1,65 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+- Chia thành nhiều module
 
-## Getting Started
+* Module 1: board - quản lý dữ liệu bàn cờ.
+* Module 2: movement - toàn bộ logic di chuyển game.
+* Module 3: random - sinh tile mới.
+* Module 4; score - tính điểm
+* Module 5; validator - luật game.
+* Module 6: keyboard - input người chơi.
+* Module 7: điều phối toàn game.
+* Module 8: ai - gợi ý đường đi.
 
-First, run the development server:
+- Kiến trúc tổng quát
+  Keyboard Input
+  ↓
+  Game Controller
+  ↓
+  Movement Engine
+  ↓
+  Spawn Random Tile
+  ↓
+  Score System
+  ↓
+  Validator
+  ↓
+  Update State
+  ↓
+  React Render
+  ↓
+  UI
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- Các thuật toán dự kiến
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+* Matrix Representation: cấu trúc dữ liệu ma trận ( module 1)
+* Compress Algorithm: dịch chuyển số để ghép
+* Adjacent Merge: gộp các ô giống nhau
+* Adjacent Merge:
+* Reverse Trick:
+* Matrix Transpose:
+* Random Empty Cell: Random số (thường 2 hoặc 4)
+* Accumulated Merge Score: tính điểm
+* Win Detection:
+* Move Possible Detection:
+* Event Listener:
+* Game Orchestration:
+* Greedy/ Heuristic/ Expectimax: hướng dẫn đường đi
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- Thu tu code
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. board.model.ts
+2. board.service.ts
+3. random/spawnTile.ts
+4. movement/compress.ts
+5. movement/merge.ts
+6. movement/moveLeft.ts
+7. movement/moveRight.ts
+8. movement/moveUp.ts
+9. movement/moveDown.ts
+10. movement.service.ts
+11. score.service.ts
+12. validator/checkGameOver.ts
+13. game.controller.ts
+14. game.state.ts
+15. keyboard.service.ts
+16. UI
+17. AI

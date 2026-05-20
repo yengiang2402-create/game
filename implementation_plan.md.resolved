@@ -1,0 +1,43 @@
+# Goal
+
+Create a Login/Register feature for the 2048 game and tie the "Best Score" functionality to logged-in user accounts, using `localStorage` as a mock database.
+
+## User Review Required
+
+- **Data Storage**: I will use `localStorage` to save user accounts (usernames, passwords) and their respective best scores. Since this is a frontend-only application for now, data will be saved directly in the browser. Is this acceptable?
+- **Guest Play**: If a user is NOT logged in, should they still have a temporary Best Score (guest score), or should Best Score only be tracked when logged in? (The plan assumes Best Score is always 0 for guests and only saves for logged-in users).
+- **Validation**: Do you want any specific validation for the password (e.g., length, special characters) as discussed in previous conversations, or just a simple basic text check? (The plan assumes simple text/password for now).
+
+## Open Questions
+
+None at this time.
+
+## Proposed Changes
+
+### 1. `app/page.tsx`
+- **[MODIFY]**: 
+  - Add state variables for `currentUser`, `showAuthModal`, and `authMode` (login or register).
+  - Update the `<header>` to include "Login / Register" buttons if not logged in, or "Hello, [User] | Logout" if logged in.
+  - Create a new UI modal for Authentication that matches the dark/pink theme of the game.
+  - Pass the `currentUser` to the `GameController` or `ScoreService` whenever the user logs in or out, so the game knows whose score to load/save.
+
+### 2. `modules/score/score.service.ts`
+- **[MODIFY]**: 
+  - Update the constructor and methods to accept an optional `username`.
+  - Change the `localStorage` key from a global `'bestScore'` to `'bestScore_' + username` (e.g., `'bestScore_admin'`).
+  - Add a method to reload the best score from `localStorage` whenever the user logs in.
+
+### 3. `modules/game/game.controller.ts`
+- **[MODIFY]**: 
+  - Expose a method to set the current username inside `ScoreService`.
+  - Update the controller so that when a username is provided, it reloads the corresponding best score and updates the state.
+
+## Verification Plan
+
+### Manual Verification
+1. Open the game, confirm that Best Score shows 0 if not logged in.
+2. Click "Login / Register", create a new account.
+3. Play the game and trigger a Game Over or New Game.
+4. Verify that the Best Score is updated.
+5. Log out, verify Best Score resets to 0.
+6. Log back in with the same account, verify the Best Score is restored from the previous session.
