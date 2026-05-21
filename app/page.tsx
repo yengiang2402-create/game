@@ -14,6 +14,9 @@ export default function Page() {
   const [boardSize, setBoardSize] = useState<number>(4);
   const [hintDirection, setHintDirection] = useState<Direction | null>(null);
 
+  const boardRef = useRef<HTMLDivElement | null>(null);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+
   // Thay đổi kích thước bàn cờ khi người dùng chọn (4x4, 5x5, 6x6)
   // Effect này sẽ chạy lại mỗi khi biến boardSize thay đổi, giúp reset game theo kích thước mới
   useEffect(() => {
@@ -24,27 +27,17 @@ export default function Page() {
     setGameState(controller.getState());
   }, [boardSize]);
 
-  const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    const keys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
-    if (!keys.includes(e.key)) return;
+  // Hàm thực hiện di chuyển hợp nhất cho cả bàn phím và cảm ứng
+  const executeMove = useCallback((direction: Direction) => {
+    if (!controllerRef.current) return;
 
     // Tắt gợi ý nếu đang hiển thị
     setHintDirection(null);
 
-    e.preventDefault();
-
-    if (!controllerRef.current) return;
-
-    let direction: Direction;
-    if (e.key === 'ArrowUp') direction = 'UP';
-    else if (e.key === 'ArrowDown') direction = 'DOWN';
-    else if (e.key === 'ArrowLeft') direction = 'LEFT';
-    else direction = 'RIGHT';
-
     const newState = controllerRef.current.move(direction);
     setGameState({ ...newState });
 
-    const board = document.getElementById('game-board');
+    const board = boardRef.current || document.getElementById('game-board');
     if (!board) return;
 
     board.style.transform = 'scale(0.99)';
@@ -53,10 +46,81 @@ export default function Page() {
     }, 100);
   }, []);
 
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    const keys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+    if (!keys.includes(e.key)) return;
+
+    e.preventDefault();
+    
+    let direction: Direction;
+    if (e.key === 'ArrowUp') direction = 'UP';
+    else if (e.key === 'ArrowDown') direction = 'DOWN';
+    else if (e.key === 'ArrowLeft') direction = 'LEFT';
+    else direction = 'RIGHT';
+
+    executeMove(direction);
+  }, [executeMove]);
+
+  // Cảm ứng: Bắt đầu chạm màn hình
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return;
+    touchStartRef.current = {
+      x: e.touches[0].clientX,
+      y: e.touches[0].clientY,
+    };
+  }, []);
+
+  // Cảm ứng: Kết thúc chạm màn hình & tính toán hướng vuốt
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (!touchStartRef.current || e.changedTouches.length !== 1) return;
+
+    const startX = touchStartRef.current.x;
+    const startY = touchStartRef.current.y;
+    const endX = e.changedTouches[0].clientX;
+    const endY = e.changedTouches[0].clientY;
+
+    const diffX = endX - startX;
+    const diffY = endY - startY;
+    const minSwipeDistance = 30; // Ngưỡng tối thiểu pixel để nhận diện cử chỉ vuốt
+
+    // Nhấp nhẹ vô tình không được tính là vuốt
+    if (Math.abs(diffX) < minSwipeDistance && Math.abs(diffY) < minSwipeDistance) {
+      touchStartRef.current = null;
+      return;
+    }
+
+    let direction: Direction;
+    if (Math.abs(diffX) > Math.abs(diffY)) {
+      direction = diffX > 0 ? 'RIGHT' : 'LEFT';
+    } else {
+      direction = diffY > 0 ? 'DOWN' : 'UP';
+    }
+
+    executeMove(direction);
+    touchStartRef.current = null;
+  }, [executeMove]);
+
   useEffect(() => {
     document.addEventListener('keydown', handleKeyDown, { passive: false });
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
+
+  // Ngăn cuộn màn hình khi vuốt trên bàn cờ trên thiết bị di động
+  useEffect(() => {
+    const board = boardRef.current;
+    if (!board) return;
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.cancelable) {
+        e.preventDefault();
+      }
+    };
+
+    board.addEventListener('touchmove', handleTouchMove, { passive: false });
+    return () => {
+      board.removeEventListener('touchmove', handleTouchMove);
+    };
+  }, []);
 
   const startNewGame = () => {
     if (!controllerRef.current) return;
@@ -165,6 +229,9 @@ export default function Page() {
 
           <div
             id="game-board"
+            ref={boardRef}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
             // CSS Lưới (Grid) Động:
             // Tùy thuộc vào kích thước (boardSize), chúng ta thiết lập grid-cols và grid-rows tương ứng.
             // Điều này ép các ô vuông luôn luôn phân bố đều bên trong khung hình cố định (500x500 px),
@@ -172,7 +239,7 @@ export default function Page() {
             className={`grid ${boardSize === 4 ? 'grid-cols-4 grid-rows-4 gap-3' :
                 boardSize === 5 ? 'grid-cols-5 grid-rows-5 gap-2.5' :
                   'grid-cols-6 grid-rows-6 gap-2 sm:gap-3'
-              } w-[320px] h-[320px] sm:w-[500px] sm:h-[500px] transition-transform`}
+              } w-[320px] h-[320px] sm:w-[500px] sm:h-[500px] transition-transform select-none touch-none`}
           >
             {gameState?.board.map((row, rowIndex) =>
               row.map((cell, colIndex) =>
@@ -185,12 +252,45 @@ export default function Page() {
             )}
           </div>
         </div>
+        {/* Direction Pad for keyboard/touch controls */}
+        <div className="flex flex-col items-center mt-6">
+          <button
+            onClick={() => executeMove('UP')}
+            className="w-12 h-12 mb-2 rounded-full bg-[#1e2023] text-[#e1bec3] flex items-center justify-center hover:bg-[#ff4d80] hover:text-[#660027] transition"
+          >
+            ↑
+          </button>
+          <div className="flex space-x-2">
+            <button
+              onClick={() => executeMove('LEFT')}
+              className="w-12 h-12 rounded-full bg-[#1e2023] text-[#e1bec3] flex items-center justify-center hover:bg-[#ff4d80] hover:text-[#660027] transition"
+            >
+              ←
+            </button>
+            <button
+              onClick={() => executeMove('DOWN')}
+              className="w-12 h-12 rounded-full bg-[#1e2023] text-[#e1bec3] flex items-center justify-center hover:bg-[#ff4d80] hover:text-[#660027] transition"
+            >
+              ↓
+            </button>
+            <button
+              onClick={() => executeMove('RIGHT')}
+              className="w-12 h-12 rounded-full bg-[#1e2023] text-[#e1bec3] flex items-center justify-center hover:bg-[#ff4d80] hover:text-[#660027] transition"
+            >
+              →
+            </button>
+          </div>
+        </div>
 
         {/* HOW TO PLAY */}
         <div className="w-full max-w-[500px] mt-10 bg-[#1e2023] rounded-xl p-6 border border-white/10">
-          <h3 className="text-center text-[#ffb2bf] font-bold mb-6">
+          <h3 className="text-center text-[#ffb2bf] font-bold mb-3">
             HOW TO PLAY
           </h3>
+          
+          <p className="text-center text-xs text-[#e1bec3] mb-6">
+            💻 Use <b>Arrow Keys</b> on Desktop / 📱 <b>Swipe Screen</b> on Mobile
+          </p>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
             <Key icon="↑" label="UP" highlight={hintDirection === 'UP'} />
